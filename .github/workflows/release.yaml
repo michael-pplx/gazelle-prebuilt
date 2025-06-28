@@ -40,8 +40,15 @@ jobs:
           for platform in linux_amd64 linux_arm64 darwin_arm64 windows_amd64; do
             bazel run --run_under cp --platforms="@rules_go//go/toolchain:$platform" //:gazelle "$PWD/assets/gazelle-$platform"
           done
+          shasum -a 256 assets/* > assets/CHECKSUMS
+          
+          echo <<'EOF' > release_notes.txt
+          With rules_multitool, use the following `tools.lock.json`:
+          EOF
+          jq --arg tag "${{ needs.tag.outputs.tag }}" -Rs -f filter.jq assets/CHECKSUMS >> release_notes.txt
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.tag.outputs.tag }}
           files: assets/*
           generate_release_notes: true
+          body_path: release_notes.txt

@@ -19,6 +19,26 @@ For example see this issue, where the Python extension depends on a C library ca
 
 https://github.com/bazel-contrib/rules_python/issues/1913
 
+## Install
+
+1. Configure Bazel to fetch the binary you need from our GitHub release. We recommend using [rules_multitool](https://github.com/theoremlp/rules_multitool) for this; see below. You could instead use `http_file` with a `native_binary#select`.
+
+2. Verify that you can run that binary from the command-line, based on the label.
+
+For example with rules_multitool:
+
+```sh
+$ bazel run @multitool//tools/gazelle
+```
+
+3. Add a `gazelle` target to your `BUILD` file, referencing the label from the previous step.
+
+```starlark
+gazelle(name = "gazelle", binary = "@multitool//tools/gazelle")
+```
+
+4. Continue as normal from the [gazelle](https://github.com/bazelbuild/bazel-gazelle) setup docs.
+
 ## Add a language extension
 
 The language extension you need isn't already built-in?

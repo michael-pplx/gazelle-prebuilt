@@ -42,10 +42,22 @@ jobs:
           done
           shasum -a 256 assets/* > assets/CHECKSUMS
           
-          echo <<'EOF' > release_notes.txt
-          With rules_multitool, use the following `tools.lock.json`:
+          cat <<EOF > release_notes.txt
+          We recommend using with https://github.com/theoremlp/rules_multitool.
+      
+          To upgrade run,
+          
+          ```sh
+          multitool update tools.lock.json
+          ```
+          
+          If it's your initial install, use the following `tools.lock.json`:
+
+          ```json
+          $(jq --arg tag "${{ needs.tag.outputs.tag }}" -Rs -f filter.jq assets/CHECKSUMS)
+          ```
           EOF
-          jq --arg tag "${{ needs.tag.outputs.tag }}" -Rs -f filter.jq assets/CHECKSUMS >> release_notes.txt
+          
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.tag.outputs.tag }}

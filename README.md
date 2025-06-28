@@ -21,7 +21,7 @@ https://github.com/bazel-contrib/rules_python/issues/1913
 
 ## Install
 
-1. Configure Bazel to fetch the binary you need from our GitHub release. We recommend using [rules_multitool](https://github.com/theoremlp/rules_multitool) for this; see below. You could instead use `http_file` with a `native_binary#select`.
+1. Configure Bazel to fetch the binary you need from our GitHub release. We recommend using [rules_multitool](https://github.com/theoremlp/rules_multitool) for this; see the release notes on the release you choose. You could instead use `http_file` with a `native_binary#select`.
 
 2. Verify that you can run that binary from the command-line, based on the label.
 
@@ -38,6 +38,8 @@ gazelle(name = "gazelle", binary = "@multitool//tools/gazelle")
 ```
 
 4. Continue as normal from the [gazelle](https://github.com/bazelbuild/bazel-gazelle) setup docs.
+
+5. When you want to update to a new version, use [multitool](https://github.com/theoremlp/multitool): `multitool update tools.lock.json` to update the lockfile.
 
 ## Add a language extension
 

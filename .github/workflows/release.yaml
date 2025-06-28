@@ -1,6 +1,5 @@
 name: Release
 on:
-  # Or, developers can manually push a tag from their clone
   push:
     branches: ['release']
 permissions:

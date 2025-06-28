@@ -6,5 +6,6 @@ gazelle_binary(
         "@bazel_skylib_gazelle_plugin//bzl",
         "@gazelle//language/proto:go_default_library",
         "@gazelle//language/go:go_default_library",
+        "@gazelle_cc//language/cc",
     ],
 )

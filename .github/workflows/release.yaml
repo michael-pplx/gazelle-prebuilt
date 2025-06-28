@@ -32,10 +32,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: bazel-contrib/setup-bazel@4fd964a13a440a8aeb0be47350db2fc640f19ca8 # 0.15.0
-      - name: Release
+      - name: Build release artifacts
         run: |
           mkdir assets
-          bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_amd64 //:gazelle assets/gazelle-linux_amd64
+          bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_amd64 //:gazelle $PWD/assets/gazelle-linux_amd64
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}

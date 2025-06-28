@@ -1,0 +1,32 @@
+name: Release
+on:
+  # Or, developers can manually push a tag from their clone
+  push:
+    branches: ['release']
+permissions:
+  id-token: write
+  attestations: write
+  contents: write
+jobs:
+  tag: # Based on https://blog.aspect.build/versioning-releases-from-a-monorepo
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for git describe
+      - name: Tag
+        id: tag
+        run: |
+          TAG=$(git describe --long --match="[0-9][0-9][0-9][0-9].[0-9][0-9]" | sed -e 's/-/./;s/-g/+/')
+          echo "Creating tag: $TAG"
+          git tag $TAG
+          git push origin $TAG
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bazel-contrib/setup-bazel@4fd964a13a440a8aeb0be47350db2fc640f19ca8 # 0.15.0
+      - name: Release
+        run:  bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_amd64 //:gazelle assets/gazelle-linux_amd64

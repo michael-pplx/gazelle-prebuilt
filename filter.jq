@@ -2,10 +2,9 @@
   "$schema": "https://raw.githubusercontent.com/theoremlp/rules_multitool/main/lockfile.schema.json",
   "gazelle": {
     "binaries": [
-      inputs | split("\n") | 
-      map(select(length > 0) | 
-          capture("(?<sha256>[a-f0-9]{64})\\s+assets/gazelle-(?<platform>[^\\s]+)")) |
-      map({
+      . | rtrimstr("
+") | split("
+") | .[] | capture("(?<sha256>[a-f0-9]{64})[ ]+assets/gazelle-(?<platform>[^ ]+)") | {
         "kind": "file",
         "url": "https://github.com/alexeagle/gazelle-prebuilt/releases/download/\($tag)/gazelle-\(.platform)",
         "sha256": .sha256,
@@ -22,7 +21,7 @@
           else error("unknown cpu")
           end
         )
-      })
+      }
     ]
   }
 }

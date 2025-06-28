@@ -1,0 +1,20 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches: ['main', 'release']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions: 
+      pull-requests: write 
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bazel-contrib/setup-bazel@4fd964a13a440a8aeb0be47350db2fc640f19ca8 # 0.15.0
+      - run: bazel build gazelle
+      - id: size
+        run: echo "size=$(ls -lh bazel-bin/gazelle_/gazelle | awk '{print $5}')" >> "$GITHUB_OUTPUT"
+      - uses: thollander/actions-comment-pull-request@v3
+        with:
+          message: "🔍 Binary size: ${{ steps.size.outputs.size }}"

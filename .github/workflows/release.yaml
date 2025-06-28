@@ -25,8 +25,19 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v4
       - uses: bazel-contrib/setup-bazel@4fd964a13a440a8aeb0be47350db2fc640f19ca8 # 0.15.0
       - name: Release
-        run:  bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_amd64 //:gazelle assets/gazelle-linux_amd64
+        run: |
+          mkdir assets
+          bazel run --run_under cp --platforms=@rules_go//go/toolchain:linux_amd64 //:gazelle assets/gazelle-linux_amd64
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          files: assets/*
+          generate_release_notes: true

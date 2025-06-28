@@ -10,11 +10,14 @@ permissions:
 jobs:
   tag: # Based on https://blog.aspect.build/versioning-releases-from-a-monorepo
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Fetch all history for git describe
       - name: Tag
+        id: tag
         run: |
           TAG=$(git describe --long --match="[0-9][0-9][0-9][0-9].[0-9][0-9]" | sed -e 's/-/./;s/-g/+/')
           echo "Creating tag: $TAG"

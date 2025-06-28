@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  pull_request:
+    branches: ['main', 'release']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bazel-contrib/setup-bazel@4fd964a13a440a8aeb0be47350db2fc640f19ca8 # 0.15.0
+      - run: bazel build gazelle
+      - id: size
+        run: echo "size=$(ls -lh bazel-bin/gazelle_/gazelle | awk '{print $5}')" >> "$GITHUB_OUTPUT"
+      - uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🔍 Binary size: ${process.env.SIZE}`
+            })
+        env:
+          SIZE: ${{ steps.size.outputs.size }}

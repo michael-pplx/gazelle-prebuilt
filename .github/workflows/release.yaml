@@ -11,12 +11,10 @@ jobs:
   tag: # Based on https://blog.aspect.build/versioning-releases-from-a-monorepo
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Fetch all history for git describe
       - name: Tag
-        id: tag
         run: |
           TAG=$(git describe --long --match="[0-9][0-9][0-9][0-9].[0-9][0-9]" | sed -e 's/-/./;s/-g/+/')
           echo "Creating tag: $TAG"
@@ -36,7 +34,7 @@ jobs:
       - name: Build release artifacts
         run: |
           mkdir assets
-          for platform in linux_amd64 darwin_arm64 windows_amd64; do
+          for platform in linux_amd64 linux_arm64 darwin_arm64 windows_amd64; do
             bazel run --run_under cp --platforms="@rules_go//go/toolchain:$platform" //:gazelle "$PWD/assets/gazelle-$platform"
           done
       - uses: softprops/action-gh-release@v2

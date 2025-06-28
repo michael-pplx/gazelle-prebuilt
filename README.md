@@ -41,7 +41,10 @@ gazelle(name = "gazelle", binary = "@multitool//tools/gazelle")
 
 5. When you want to update to a new version, use [multitool](https://github.com/theoremlp/multitool): `multitool update tools.lock.json` to update the lockfile.
 
-## Add a language extension
+## Language extensions
+
+Gazelle has to be built with a list of supported language extensions.
+See [BUILD](BUILD) for the list currently built-in.
 
 The language extension you need isn't already built-in?
 

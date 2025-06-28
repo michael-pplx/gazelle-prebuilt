@@ -44,18 +44,18 @@ jobs:
           
           cat <<EOF > release_notes.txt
           We recommend using with https://github.com/theoremlp/rules_multitool.
-      
+
           To upgrade run,
           
-          ```sh
+          \`\`\`sh
           multitool update tools.lock.json
-          ```
+          \`\`\`
           
           If it's your initial install, use the following `tools.lock.json`:
 
-          ```json
+          \`\`\`json
           $(jq --arg tag "${{ needs.tag.outputs.tag }}" -Rs -f filter.jq assets/CHECKSUMS)
-          ```
+          \`\`\`
           EOF
           
       - uses: softprops/action-gh-release@v2

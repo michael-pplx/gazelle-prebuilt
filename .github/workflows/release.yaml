@@ -41,6 +41,6 @@ jobs:
           done
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.tag.outputs.tag }}
+          tag_name: ${{ needs.tag.outputs.tag }}
           files: assets/*
           generate_release_notes: true

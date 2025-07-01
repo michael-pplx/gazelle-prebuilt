@@ -34,6 +34,8 @@ $ bazel run @multitool//tools/gazelle
 3. Add a `gazelle` target to your `BUILD` file, referencing the label from the previous step.
 
 ```starlark
+load("@bazel_gazelle//:def.bzl", "gazelle")
+
 gazelle(name = "gazelle", binary = "@multitool//tools/gazelle")
 ```
 

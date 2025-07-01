@@ -21,7 +21,10 @@ https://github.com/bazel-contrib/rules_python/issues/1913
 
 ## Install
 
-1. Configure Bazel to fetch the binary you need from our GitHub release. We recommend using [rules_multitool](https://github.com/theoremlp/rules_multitool) for this; see the release notes on the release you choose. You could instead use `http_file` with a `native_binary#select`.
+1. Configure Bazel to fetch the binary you need from our GitHub release. There are a few ways:
+  - We recommend using [rules_multitool](https://github.com/theoremlp/rules_multitool) for this; see the release notes on the release you choose.
+  - Simplest: `http_file` with a `native_binary#select`
+  - https://dotslash-cli.com/
 
 2. Verify that you can run that binary from the command-line, based on the label.
 

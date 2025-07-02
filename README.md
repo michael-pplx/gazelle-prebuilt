@@ -49,9 +49,12 @@ gazelle(name = "gazelle", gazelle = "@multitool//tools/gazelle")
 ## Language extensions
 
 Gazelle has to be built with a list of supported language extensions.
+We have selected some to compile into our prebuild.
 See [BUILD](BUILD) for the list currently built-in.
 
-The language extension you need isn't already built-in?
+You might want a different list, for example to add a first-party extension you wrote in Go.
+To customize the extensions, your choices are:
 
 1. Add it to this repo and turn on for everyone. See [CONTRIBUTING.md](CONTRIBUTING.md)
-2. Or, you can build your own binary and use it in your org. Fork this repo to your own GitHub org and add dependencies on your gazelle extensions, or just write them directly in the fork repo.
+2. Fork this repo to your own GitHub org and add dependencies on your gazelle extensions, or just write them directly in the fork repo.
+   The GitHub Actions automation will publish binaries to the releases page that you can fetch.

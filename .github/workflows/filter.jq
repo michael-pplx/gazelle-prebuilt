@@ -16,8 +16,8 @@
           end
         ),
         "cpu": (
-          if .platform | endswith("_amd64") then "x86_64"
-          elif .platform | endswith("_arm64") then "arm64"
+          if .platform | endswith("_amd64_cgo") then "x86_64"
+          elif .platform | endswith("_arm64_cgo") then "arm64"
           else error("unknown cpu")
           end
         )

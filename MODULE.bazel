@@ -29,6 +29,7 @@ go_deps.module_override(
     ],
     path = "github.com/aspect-build/aspect-cli",
 )
+
 # Throw away BUILD files found in aspect-cli.
 # They depend on go modules like tree-sitter-typescript.
 go_deps.gazelle_override(
@@ -64,10 +65,10 @@ single_version_override(
     patch_strip = 2,
     patches = [
         "patches/rules_python.patch",
+        "patches/rules_python_gazelle_plugin.patch",
     ],
     version = "1.5.1",
 )
-
 
 # For cgo
 include("//:llvm.MODULE.bazel")

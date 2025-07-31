@@ -1,0 +1,343 @@
+diff --git a/gazelle/python/generate.go b/gazelle/python/generate.go
+index 27930c10..a2e92e29 100644
+--- a/gazelle/python/generate.go
++++ b/gazelle/python/generate.go
+@@ -146,14 +146,24 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
+ 		}
+ 	}
+
++	allBoundaryPackages := treeset.NewWithStringComparator()
++
+ 	// Add files from subdirectories if they meet the criteria.
+-	for _, d := range args.Subdirs {
++	// We don't iterate over `args.Subdirs` because it only contains the immediate children which are also
++	// packages, so instead we iterate over the parent. This has the side-effect of potentially no longer
++	// respecting `# gazelle:exclude` directives, so users should instead create BUILD files which each
++	// contain a `# gazelle:ignore` directive in each of the directories they want to exclude.
++	for _, d := range []string{args.Dir} {
+ 		// boundaryPackages represents child Bazel packages that are used as a
+ 		// boundary to stop processing under that tree.
+ 		boundaryPackages := make(map[string]struct{})
+ 		err := filepath.WalkDir(
+-			filepath.Join(args.Dir, d),
++			d,
+ 			func(path string, entry fs.DirEntry, err error) error {
++				if path == args.Dir {
++					return nil
++				}
++
+ 				if err != nil {
+ 					return err
+ 				}
+@@ -219,6 +229,15 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
+ 				return nil
+ 			},
+ 		)
++
++		for bp := range boundaryPackages {
++			bp, err := filepath.Rel(args.Dir, bp)
++			if err != nil {
++				log.Fatalf("ERROR: %v\n", err)
++			}
++			allBoundaryPackages.Add(fmt.Sprintf("%s/**", bp))
++		}
++
+ 		if err != nil {
+ 			log.Printf("ERROR: %v\n", err)
+ 			return language.GenerateResult{}
+@@ -239,7 +258,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
+ 			log.Fatalf("ERROR: %v\n", err)
+ 		}
+
+-		if !hasPyBinaryEntryPointFile {
++		if false && !hasPyBinaryEntryPointFile {
+ 			// Creating one py_binary target per main module when __main__.py doesn't exist.
+ 			mainFileNames := make([]string, 0, len(mainModules))
+ 			for name := range mainModules {
+@@ -300,9 +319,17 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
+ 			collisionErrors.Add(err)
+ 		}
+
++		testsAndAllBoundaryPackages := treeset.NewWithStringComparator()
++		for _, testFileGlob := range testFileGlobs {
++			testsAndAllBoundaryPackages.Add(testFileGlob)
++		}
++		testsAndAllBoundaryPackages = testsAndAllBoundaryPackages.Union(allBoundaryPackages)
++
+ 		pyLibrary := newTargetBuilder(pyLibraryKind, pyLibraryTargetName, pythonProjectRoot, args.Rel, pyFileNames).
+ 			addVisibility(visibility).
+ 			addSrcs(srcs).
++			addIncludePatterns(treeset.NewWithStringComparator("**/*.py")).
++			addExcludePatterns(testsAndAllBoundaryPackages).
+ 			addModuleDependencies(allDeps).
+ 			addResolvedDependencies(annotations.includeDeps).
+ 			generateImportsAttribute().
+@@ -332,7 +359,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
+ 		appendPyLibrary(pyLibraryFilenames, cfg.RenderLibraryName(packageName))
+ 	}
+
+-	if hasPyBinaryEntryPointFile {
++	if false && hasPyBinaryEntryPointFile {
+ 		deps, _, annotations, err := parser.parseSingle(pyBinaryEntrypointFilename)
+ 		if err != nil {
+ 			log.Fatalf("ERROR: %v\n", err)
+@@ -386,6 +413,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
+
+ 		conftestTarget := newTargetBuilder(pyLibraryKind, conftestTargetname, pythonProjectRoot, args.Rel, pyFileNames).
+ 			addSrc(conftestFilename).
++			addIncludePatterns(treeset.NewWithStringComparator(conftestFilename)).
+ 			addModuleDependencies(deps).
+ 			addResolvedDependencies(annotations.includeDeps).
+ 			addVisibility(visibility).
+@@ -415,8 +443,16 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
+ 				fqTarget.String(), actualPyTestKind, err, pythonconfig.TestNamingConvention)
+ 			collisionErrors.Add(err)
+ 		}
++
++		includePatterns := treeset.NewWithStringComparator()
++		for _, testFileGlob := range testFileGlobs {
++			includePatterns.Add(testFileGlob)
++		}
++
+ 		return newTargetBuilder(pyTestKind, pyTestTargetName, pythonProjectRoot, args.Rel, pyFileNames).
+ 			addSrcs(srcs).
++			addIncludePatterns(includePatterns).
++			addExcludePatterns(allBoundaryPackages).
+ 			addModuleDependencies(deps).
+ 			addResolvedDependencies(annotations.includeDeps).
+ 			generateImportsAttribute()
+@@ -433,6 +469,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
+ 			pyTestTarget := newPyTestTargetBuilder(pyTestFilenames, pyTestTargetName)
+
+ 			if hasPyTestEntryPointTarget {
++				log.Fatalf("ERROR: Path should be unreachable from pplx repo")
+ 				entrypointTarget := fmt.Sprintf(":%s", pyTestEntrypointTargetname)
+ 				main := fmt.Sprintf(":%s", pyTestEntrypointFilename)
+ 				pyTestTarget.
+@@ -448,6 +485,7 @@ func (py *Python) GenerateRules(args language.GenerateArgs) language.GenerateRes
+ 			pyTestTargets = append(pyTestTargets, pyTestTarget)
+ 		}
+ 	} else {
++		log.Fatalf("ERROR: Path should be unreachable from pplx repo")
+ 		// Create one py_test target per file
+ 		pyTestFilenames.Each(func(index int, testFile interface{}) {
+ 			srcs := treeset.NewWith(godsutils.StringComparator, testFile)
+diff --git a/gazelle/python/kinds.go b/gazelle/python/kinds.go
+index 7a0639ab..6603745a 100644
+--- a/gazelle/python/kinds.go
++++ b/gazelle/python/kinds.go
+@@ -32,17 +32,19 @@ func (*Python) Kinds() map[string]rule.KindInfo {
+
+ var pyKinds = map[string]rule.KindInfo{
+ 	pyBinaryKind: {
+-		MatchAny: false,
+-		MatchAttrs: []string{"srcs"},
++		MatchAny:   false,
++		MatchAttrs: []string{"file_patterns", "ignore_patterns"},
+ 		NonEmptyAttrs: map[string]bool{
+-			"deps":    true,
+-			"main":    true,
+-			"srcs":    true,
+-			"imports": true,
++			"deps":             true,
++			"main":             true,
++			"file_patterns":    true,
++			"ignore_patterns": true,
++			"imports":          true,
+ 		},
+ 		SubstituteAttrs: map[string]bool{},
+ 		MergeableAttrs: map[string]bool{
+-			"srcs": true,
++			"file_patterns":    true,
++			"ignore_patterns": true,
+ 		},
+ 		ResolveAttrs: map[string]bool{
+ 			"deps": true,
+@@ -50,15 +52,17 @@ var pyKinds = map[string]rule.KindInfo{
+ 	},
+ 	pyLibraryKind: {
+ 		MatchAny:   false,
+-		MatchAttrs: []string{"srcs"},
++		MatchAttrs: []string{"file_patterns", "ignore_patterns"},
+ 		NonEmptyAttrs: map[string]bool{
+-			"deps":    true,
+-			"srcs":    true,
+-			"imports": true,
++			"deps":             true,
++			"file_patterns":    true,
++			"ignore_patterns": true,
++			"imports":          true,
+ 		},
+ 		SubstituteAttrs: map[string]bool{},
+ 		MergeableAttrs: map[string]bool{
+-			"srcs": true,
++			"file_patterns":    true,
++			"ignore_patterns": true,
+ 		},
+ 		ResolveAttrs: map[string]bool{
+ 			"deps": true,
+@@ -67,14 +71,16 @@ var pyKinds = map[string]rule.KindInfo{
+ 	pyTestKind: {
+ 		MatchAny: false,
+ 		NonEmptyAttrs: map[string]bool{
+-			"deps":    true,
+-			"main":    true,
+-			"srcs":    true,
+-			"imports": true,
++			"deps":             true,
++			"main":             true,
++			"file_patterns":    true,
++			"ignore_patterns": true,
++			"imports":          true,
+ 		},
+ 		SubstituteAttrs: map[string]bool{},
+ 		MergeableAttrs: map[string]bool{
+-			"srcs": true,
++			"file_patterns":    true,
++			"ignore_patterns": true,
+ 		},
+ 		ResolveAttrs: map[string]bool{
+ 			"deps": true,
+diff --git a/gazelle/python/resolve.go b/gazelle/python/resolve.go
+index 7a2ec3d6..29ef63a2 100644
+--- a/gazelle/python/resolve.go
++++ b/gazelle/python/resolve.go
+@@ -57,7 +57,13 @@ func (*Resolver) Name() string { return languageName }
+ func (py *Resolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
+ 	cfgs := c.Exts[languageName].(pythonconfig.Configs)
+ 	cfg := cfgs[f.Pkg]
+-	srcs := r.AttrStrings("srcs")
++
++	attr, _ := r.PrivateAttr("srcs").([]interface{})
++	srcs := make([]string, 0, len(attr))
++	for _, e := range attr {
++		srcs = append(srcs, e.(string))
++	}
++
+ 	provides := make([]resolve.ImportSpec, 0, len(srcs)+1)
+ 	for _, src := range srcs {
+ 		ext := filepath.Ext(src)
+@@ -148,6 +154,7 @@ func (py *Resolver) Resolve(
+ 		modules := modulesRaw.(*treeset.Set)
+ 		it := modules.Iterator()
+ 		explainDependency := os.Getenv("EXPLAIN_DEPENDENCY")
++		explainAllDependencies := os.Getenv("EXPLAIN_ALL_DEPENDENCIES")
+ 		hasFatalError := false
+ 	MODULES_LOOP:
+ 		for it.Next() {
+@@ -180,11 +187,11 @@ func (py *Resolver) Resolve(
+ 						}
+ 						dep := override.Rel(from.Repo, from.Pkg).String()
+ 						deps.Add(dep)
+-						if explainDependency == dep {
++						if explainAllDependencies != "" || explainDependency == dep {
+ 							log.Printf("Explaining dependency (%s): "+
+ 								"in the target %q, the file %q imports %q at line %d, "+
+ 								"which resolves using the \"gazelle:resolve\" directive.\n",
+-								explainDependency, from.String(), mod.Filepath, moduleName, mod.LineNumber)
++								dep, from.String(), mod.Filepath, moduleName, mod.LineNumber)
+ 						}
+ 						continue MODULES_LOOP
+ 					}
+@@ -203,11 +210,11 @@ func (py *Resolver) Resolve(
+ 								deps.Add(dep)
+ 							}
+ 						}
+-						if explainDependency == dep {
++						if explainAllDependencies != "" || explainDependency == dep {
+ 							log.Printf("Explaining dependency (%s): "+
+ 								"in the target %q, the file %q imports %q at line %d, "+
+ 								"which resolves from the third-party module %q from the wheel %q.\n",
+-								explainDependency, from.String(), mod.Filepath, moduleName, mod.LineNumber, mod.Name, dep)
++								dep, from.String(), mod.Filepath, moduleName, mod.LineNumber, mod.Name, dep)
+ 						}
+ 						continue MODULES_LOOP
+ 					} else {
+@@ -260,11 +267,11 @@ func (py *Resolver) Resolve(
+ 						matchLabel := filteredMatches[0].Label.Rel(from.Repo, from.Pkg)
+ 						dep := matchLabel.String()
+ 						deps.Add(dep)
+-						if explainDependency == dep {
++						if explainAllDependencies != "" || explainDependency == dep {
+ 							log.Printf("Explaining dependency (%s): "+
+ 								"in the target %q, the file %q imports %q at line %d, "+
+ 								"which resolves from the first-party indexed labels.\n",
+-								explainDependency, from.String(), mod.Filepath, moduleName, mod.LineNumber)
++								dep, from.String(), mod.Filepath, moduleName, mod.LineNumber)
+ 						}
+ 						continue MODULES_LOOP
+ 					}
+diff --git a/gazelle/python/target.go b/gazelle/python/target.go
+index c40d6fb3..8f343584 100644
+--- a/gazelle/python/target.go
++++ b/gazelle/python/target.go
+@@ -19,6 +19,7 @@ import (
+ 	"github.com/bazelbuild/bazel-gazelle/rule"
+ 	"github.com/emirpasic/gods/sets/treeset"
+ 	godsutils "github.com/emirpasic/gods/utils"
++	"log"
+ 	"path/filepath"
+ )
+
+@@ -29,6 +30,8 @@ type targetBuilder struct {
+ 	pythonProjectRoot string
+ 	bzlPackage        string
+ 	srcs              *treeset.Set
++	includePatterns   *treeset.Set
++	excludePatterns   *treeset.Set
+ 	siblingSrcs       *treeset.Set
+ 	deps              *treeset.Set
+ 	resolvedDeps      *treeset.Set
+@@ -46,6 +49,8 @@ func newTargetBuilder(kind, name, pythonProjectRoot, bzlPackage string, siblingS
+ 		pythonProjectRoot: pythonProjectRoot,
+ 		bzlPackage:        bzlPackage,
+ 		srcs:              treeset.NewWith(godsutils.StringComparator),
++		includePatterns:   treeset.NewWith(godsutils.StringComparator),
++		excludePatterns:   treeset.NewWith(godsutils.StringComparator),
+ 		siblingSrcs:       siblingSrcs,
+ 		deps:              treeset.NewWith(moduleComparator),
+ 		resolvedDeps:      treeset.NewWith(godsutils.StringComparator),
+@@ -68,6 +73,24 @@ func (t *targetBuilder) addSrcs(srcs *treeset.Set) *targetBuilder {
+ 	return t
+ }
+
++// addIncludePatterns copies all values from the provided includePatterns to the target.
++func (t *targetBuilder) addIncludePatterns(includePatterns *treeset.Set) *targetBuilder {
++	it := includePatterns.Iterator()
++	for it.Next() {
++		t.includePatterns.Add(it.Value().(string))
++	}
++	return t
++}
++
++// addExcludePatterns copies all values from the provided excludePatterns to the target.
++func (t *targetBuilder) addExcludePatterns(excludePatterns *treeset.Set) *targetBuilder {
++	it := excludePatterns.Iterator()
++	for it.Next() {
++		t.excludePatterns.Add(it.Value().(string))
++	}
++	return t
++}
++
+ // addModuleDependency adds a single module dep to the target.
+ func (t *targetBuilder) addModuleDependency(dep module) *targetBuilder {
+ 	fileName := dep.Name + ".py"
+@@ -151,7 +174,17 @@ func (t *targetBuilder) generateImportsAttribute() *targetBuilder {
+ func (t *targetBuilder) build() *rule.Rule {
+ 	r := rule.NewRule(t.kind, t.name)
+ 	if !t.srcs.Empty() {
+-		r.SetAttr("srcs", t.srcs.Values())
++		// Make private so it's not added to the generated target.
++		r.SetPrivateAttr("srcs", t.srcs.Values())
++	}
++	// These are named `file_patterns` and `ignore_patterns` so that
++	// they will be ordered earlier and closer together by Buildifier.
++	if t.includePatterns.Empty() {
++		log.Fatalf("ERROR: Package contains no files")
++	}
++	r.SetAttr("file_patterns", t.includePatterns.Values())
++	if !t.excludePatterns.Empty() {
++		r.SetAttr("ignore_patterns", t.excludePatterns.Values())
+ 	}
+ 	if !t.visibility.Empty() {
+ 		r.SetAttr("visibility", t.visibility.Values())
